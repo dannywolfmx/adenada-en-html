@@ -1,0 +1,128 @@
+<!--Para esta aplicacion se utilizo la libreria x2js : https://github.com/abdmob/x2js-->
+
+<html>
+
+<head>
+    <script type='text/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js'></script>
+    <script type='text/javascript' src="xml2json.js"></script>
+
+    <script>
+        var contenidoArchivo  = "";
+        var nombreArchivo = "";
+        var tipoArchivo = 'text/xml';
+        var jsonObj = {};
+        var x2js = new X2JS();
+        
+        //Leer el archivo
+         function readText(e) {
+
+            var contenidoTexto = "";
+
+            var reader = new FileReader()
+
+            //Leo el archivo como texto
+            reader.readAsText(e.files[0])
+            
+            //Comienzo a leer el archivo
+            reader.onload = function (e) {
+                contenidoTexto = reader.result;
+
+            };
+            //Ejecutar parseXML cuando termine de leer el archivo
+            reader.onloadend = function (e) {
+                parseXML(contenidoTexto);
+            };
+        };
+
+        function parseXML(e) {
+            
+            jsonObj = x2js.xml_str2json(e);
+
+        };
+
+        function descargarArchivo() {
+            //Variables que se insertaran en el json final
+            var _montoSubtotal = "";
+            var _persona = ""
+            var _tipoMoneda = "";
+            var _tipoCambio = "";
+            var _montoTotal = ""
+            var _ordenDeCompra = document.getElementById("numeroDeCompra").value
+
+            //Instanciamos las variables con el contenido del archivo
+            console.log(jsonObj)
+            _montoSubtotal = jsonObj.Comprobante._subTotal;
+            _persona = jsonObj.Comprobante.Emisor._nombre;
+            _tipoMoneda = jsonObj.Comprobante._Moneda;
+            _tipoCambio = jsonObj.Comprobante._TipoCambio;
+            _montoTotal = jsonObj.Comprobante._total;
+
+            var _xmlFinal = '<?xml version="1.0" encoding="UTF-8"?>';
+
+            //Fragmento Json de la adenda
+
+            //El orden que tiene esta adenda sera el que este en el XML final
+            jsonObj.Comprobante.Addenda = {
+                __prefix: "cfdi",
+                requestForPaymentIdentification: {
+                    orderIdentification: {
+                        referenceIdentification: _ordenDeCompra
+                    },
+                    buyer: {
+                        contactInformation: {
+                            personOrDepartmentName: {
+                                text: _persona
+                            }
+                        }
+                    },
+                    currency: {
+                        _currencyISOCode: _tipoMoneda,
+                        rateOfChange: _tipoCambio
+                    },
+                    baseAmount: {
+                        Amount: _montoSubtotal
+                    },
+                    payableAmount: {
+                        Amount: _montoTotal
+                    }
+                }
+            }
+
+            nombreArchivo = 'FAC_ORDEN_' + _ordenDeCompra + '.xml';
+            contenidoArchivo = _xmlFinal + x2js.json2xml_str(jsonObj);
+
+            //Descargar archivo final
+            var a = window.document.createElement('a');
+
+            a.href = window.URL.createObjectURL(new Blob([contenidoArchivo], { type: tipoArchivo }));
+
+            //Nombre archivo final
+            a.download = nombreArchivo;
+
+            // Append anchor to body.
+            document.body.appendChild(a)
+            a.click();
+
+            // Remove anchor from body
+            document.body.removeChild(a)
+        }
+
+    </script>
+</head>
+
+<body>
+    <div class="box">
+        <p>Numero de compra</p>
+        <br>
+        <input type="text" id="numeroDeCompra" placeholder="Numero de compra">
+        <br>
+
+    </div>
+    <div>
+        <input type="file" onchange="readText(this)">
+        <br>            
+        <input type="submit" onclick="descargarArchivo()">
+</div>
+</body>
+
+</html>
